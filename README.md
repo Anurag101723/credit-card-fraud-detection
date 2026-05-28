@@ -1,162 +1,174 @@
-# 💳 Credit Card Fraud Detection — XGBoost + SHAP
+# Credit Card Fraud Detection
 
-> Detecting fraudulent credit card transactions using XGBoost and SHAP explainability — achieving 0.9754 ROC AUC and 84% fraud recall on 284,807 real transactions with an estimated £58M annual saving potential.
-
-![Python](https://img.shields.io/badge/Python-3.12-blue?style=flat&logo=python&logoColor=white)
-![XGBoost](https://img.shields.io/badge/XGBoost-2.0-red?style=flat)
-![SHAP](https://img.shields.io/badge/SHAP-Explainability-orange?style=flat)
-![Status](https://img.shields.io/badge/Status-Complete-brightgreen?style=flat)
-![Dataset](https://img.shields.io/badge/Dataset-MLG--ULB-20BEFF?style=flat&logo=kaggle&logoColor=white)
+XGBoost classifier for fraud detection on 284,807 real credit card transactions with SHAP explainability and a three-tier risk scoring system.
 
 ---
 
-## 📌 Overview
+## Overview
 
-Credit card fraud costs the global economy billions annually. The challenge is extreme — only **0.172% of transactions are fraudulent**, making this one of the most severe class imbalance problems in machine learning. A naive model predicting "legitimate" for everything would be 99.83% accurate but completely useless.
+Credit card fraud detection is one of the most severe class imbalance problems in applied machine learning. Only 0.172% of transactions in this dataset are fraudulent, meaning a naive model predicting legitimate for every transaction would achieve 99.83% accuracy while being completely useless.
 
-This project builds a production-ready fraud detection system that not only achieves near-perfect detection performance but also **explains why each transaction was flagged** — critical for compliance, regulatory requirements, and analyst trust.
+This project builds a production-ready fraud detection system that handles extreme class imbalance using scale_pos_weight, achieves near-perfect ROC AUC, explains why each transaction was flagged using SHAP, and categorises transactions into actionable risk tiers for compliance teams.
 
 ---
 
-## 🎯 Key Results
+## Results
 
 | Metric | Score |
 |---|---|
-| ROC AUC | **0.9754** |
-| Fraud Recall | **84%** |
-| Fraud Precision | **77%** |
-| Accuracy | **99.97%** |
-| High Risk Precision | **84.4%** |
-| Fraud rate in dataset | **0.172%** |
+| Model | XGBoost Classifier |
+| ROC AUC | 0.9754 |
+| Fraud Recall | 84% |
+| Fraud Precision | 77% |
+| Accuracy | 99.97% |
+| High Risk Tier Precision | 84.4% |
 
 ---
 
-## 💰 Business Impact
+## Dataset
 
-| Metric | Value |
+| Property | Value |
 |---|---|
-| Transactions analysed | 284,807 |
-| High risk flags raised | 96 per 57k transactions |
-| Confirmed fraud caught | 81 cases |
-| False alarms | 15 cases |
-| Net saving per 57k transactions | ~£9,149 |
-| **Estimated annual saving (1M txns/day)** | **~£58,400,000** |
+| Total transactions | 284,807 |
+| Legitimate | 284,315 (99.828%) |
+| Fraudulent | 492 (0.172%) |
+| Features | 30 (V1-V28 PCA transformed, Amount, Time) |
+| Source | MLG-ULB, Kaggle |
+
+Note: V1 through V28 are PCA-transformed features anonymised for privacy. Only Amount and Time are original columns.
 
 ---
 
-## 🚨 The Core Challenge — Extreme Class Imbalance
+## Class Imbalance Handling
 
-| Class | Count | Percentage |
+Rather than SMOTE oversampling, which is computationally prohibitive at this scale, scale_pos_weight was used to weight fraud cases during training.
+
+| Parameter | Value | Meaning |
 |---|---|---|
-| Legitimate | 284,315 | 99.828% |
-| Fraud | 492 | 0.172% |
-
-**Solution:** `scale_pos_weight = 577` — tells XGBoost to weight fraud cases 577x more important during training. This is more effective than SMOTE on a dataset of this size.
+| scale_pos_weight | 577 | Fraud cases weighted 577x more important |
+| Ratio | 577:1 | Legitimate to fraud in training set |
 
 ---
 
-## 🔑 Top Fraud Indicators (SHAP Analysis)
+## Risk Scoring System
+
+| Risk Level | Probability Threshold | Action | Count in Test Set |
+|---|---|---|---|
+| High Risk | Above 70% | Immediate human review | 96 |
+| Medium Risk | 30% to 70% | Analyst review | 42 |
+| Low Risk | Below 30% | Auto-approve | 56,314 |
+
+Of the 96 high-risk flags, 81 were confirmed fraud — a precision of 84.4%.
+
+---
+
+## Top Fraud Indicators (SHAP)
 
 | Rank | Feature | Signal |
 |---|---|---|
-| 1 | V14 | Transaction pattern deviation — strongest fraud signal |
+| 1 | V14 | Strongest fraud indicator — transaction pattern deviation |
 | 2 | V12 | Merchant category anomaly |
 | 3 | V4 | Cardholder behaviour deviation |
 | 4 | V10 | Time-based pattern anomaly |
-| 5 | V11 | Geographic/location signal |
-
-*Note: V1-V28 are PCA-transformed features anonymised for privacy*
+| 5 | V11 | Geographic or location signal |
 
 ---
 
-## ⚙️ Fraud Risk Tiers
+## Business Impact
 
-| Risk Level | Probability | Action | Count |
-|---|---|---|---|
-| 🔴 High Risk | > 70% | Immediate human review | 96 |
-| 🟡 Medium Risk | 30-70% | Analyst review | 42 |
-| 🟢 Low Risk | < 30% | Auto-approve | 56,314 |
-
----
-
-## 🛠️ Tech Stack
-
-- **Language:** Python 3.12
-- **ML Model:** XGBoost Classifier
-- **Explainability:** SHAP (TreeExplainer)
-- **Imbalance Handling:** scale_pos_weight (577:1)
-- **Preprocessing:** StandardScaler, Stratified Train/Test Split
-- **Evaluation:** ROC AUC, Precision, Recall, F1
-- **Visualisation:** Matplotlib, Seaborn, SHAP plots
-- **Environment:** Jupyter Notebook
+| Metric | Value |
+|---|---|
+| Fraud cases caught per 57k transactions | 81 |
+| False alarms | 15 |
+| Missed fraud cases | 17 |
+| Average fraud transaction value | 122.21 GBP |
+| Net saving per 57k transactions | ~9,149 GBP |
+| Estimated annual saving at 1M transactions per day | ~58,400,000 GBP |
 
 ---
 
-## 🔍 Methodology
+## Operational Recommendations
+
+| Score Range | Action |
+|---|---|
+| Above 95% | Auto-block — model is near certain |
+| 70% to 95% | Human review by compliance analyst |
+| 30% to 70% | Flag for monitoring |
+| Below 30% | Auto-approve |
+
+Retrain model monthly. Fraud patterns evolve and model performance will degrade without regular updates. Monitor V14 and V12 signals as early warning indicators.
+
+---
+
+## Methodology
 
 ```
 Credit Card Dataset (284,807 transactions)
-              ↓
+
 Exploratory Data Analysis
-(class imbalance, amount & time distributions)
-              ↓
+Class imbalance, amount distribution, time patterns
+
 Preprocessing
-(StandardScaler on Amount & Time, stratified split)
-              ↓
-XGBoost Classifier
-(scale_pos_weight=577 for imbalance handling)
-              ↓
-SHAP Explainability
-(global feature importance + directional impact)
-              ↓
-Risk Scoring System
-(Low / Medium / High risk tiers)
-              ↓
-Business Impact Analysis
-(£58M annual saving estimate)
+StandardScaler on Amount and Time
+V1-V28 already scaled from PCA
+Stratified 80/20 train-test split
+
+XGBoost Training
+scale_pos_weight = 577 to handle class imbalance
+n_estimators = 200, max_depth = 6, learning_rate = 0.05
+
+SHAP Analysis
+TreeExplainer on 1,000 test samples
+Global feature importance and directional impact
+
+Risk Scoring
+Three-tier system: Low, Medium, High
+Business impact quantification
 ```
 
 ---
 
-## 📁 Repository Structure
+## Tech Stack
+
+| Category | Tools |
+|---|---|
+| Language | Python 3.12 |
+| ML Model | XGBoost Classifier |
+| Explainability | SHAP (TreeExplainer) |
+| Preprocessing | StandardScaler, Scikit-learn |
+| Visualisation | Matplotlib, Seaborn |
+| Environment | Jupyter Notebook |
+
+---
+
+## Repository Structure
 
 ```
 credit-card-fraud-detection/
-│
-├── fraud_detection.ipynb     # Main analysis notebook
-├── README.md                 # Project documentation
+|
+|-- fraud_detection.ipynb
+|-- README.md
 ```
 
-> **Note:** The dataset (150MB) is not included due to size limits.
-> Download from: [Kaggle — Credit Card Fraud Detection](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud)
+Dataset not included due to size (150MB).
+Download from: https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud
 
 ---
 
-## 🚀 How to Run
+## How to Run
 
-1. Clone the repository
 ```bash
 git clone https://github.com/Anurag101723/credit-card-fraud-detection.git
 cd credit-card-fraud-detection
-```
-
-2. Download dataset from Kaggle and place `creditcard.csv` in the folder
-
-3. Install dependencies
-```bash
 pip install pandas numpy scikit-learn xgboost shap matplotlib seaborn
-```
-
-4. Open the notebook
-```bash
 jupyter notebook fraud_detection.ipynb
 ```
 
 ---
 
-## 👤 Author
+## Author
 
-**Anurag Rathore**
-M.Sc. Big Data & Business Analytics — FOM University of Applied Sciences
-📧 anuragakrathore@gmail.com
-🔗 [LinkedIn](https://linkedin.com/in/anurag1017) · [Portfolio](https://Anurag101723.github.io)
+Anurag Rathore  
+anuragakrathore@gmail.com  
+linkedin.com/in/anurag1017  
+anurag101723.github.io
